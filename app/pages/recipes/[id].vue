@@ -13,14 +13,9 @@ const editTitle = ref('')
 const editContent = ref('')
 const editTagIds = ref<number[]>([])
 const saving = ref(false)
-const { editorProps } = useEditorPaste()
 
 async function fetchRecipe() {
   recipe.value = await $fetch<Recipe>(`/api/recipes/${id}`)
-}
-
-async function fetchTags() {
-  allTags.value = await $fetch<Tag[]>('/api/tags')
 }
 
 function startEdit() {
@@ -29,12 +24,6 @@ function startEdit() {
   editContent.value = recipe.value.content
   editTagIds.value = recipe.value.tags.map(rt => rt.tag_id)
   editing.value = true
-}
-
-function toggleTag(tagId: number) {
-  const idx = editTagIds.value.indexOf(tagId)
-  if (idx >= 0) editTagIds.value.splice(idx, 1)
-  else editTagIds.value.push(tagId)
 }
 
 async function saveEdit() {
@@ -55,7 +44,9 @@ async function deleteRecipe() {
   await navigateTo('/')
 }
 
-onMounted(() => { fetchRecipe(); fetchTags() })
+onMounted(async () => {
+  await Promise.all([fetchRecipe(), $fetch<Tag[]>('/api/tags').then(t => { allTags.value = t })])
+})
 </script>
 
 <template>
@@ -73,45 +64,16 @@ onMounted(() => { fetchRecipe(); fetchTags() })
         <UButton icon="i-lucide-x" variant="ghost" color="neutral" size="sm" label="Cancel" @click="editing = false" />
       </div>
 
-      <form class="space-y-4" @submit.prevent="saveEdit">
-        <UInput v-model="editTitle" placeholder="Recipe title" size="lg" />
-
-        <div v-if="allTags.length" class="flex flex-wrap gap-1.5">
-          <button
-            v-for="tag in allTags"
-            :key="tag.id"
-            type="button"
-            class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer"
-            :class="editTagIds.includes(tag.id)
-              ? `bg-${tag.color}-500 text-white`
-              : `bg-${tag.color}-500/10 text-${tag.color}-600 dark:text-${tag.color}-400 hover:bg-${tag.color}-500/20`"
-            @click="toggleTag(tag.id)"
-          >
-            {{ tag.label }}
-          </button>
-        </div>
-
-        <!-- Rich text editor -->
-        <div class="rounded-xl border border-default overflow-hidden min-h-96">
-          <UEditor
-            v-model="editContent"
-            content-type="markdown"
-            placeholder="Write your recipe…"
-            class="min-h-96"
-            :image="{ allowBase64: true, inline: true }"
-            :editor-props="editorProps"
-          >
-            <template #default="{ editor }">
-              <UEditorToolbar :editor="editor" />
-            </template>
-          </UEditor>
-        </div>
-
-        <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="neutral" label="Cancel" @click="editing = false" />
-          <UButton type="submit" color="primary" icon="i-lucide-save" label="Save" :loading="saving" :disabled="!editTitle.trim()" />
-        </div>
-      </form>
+      <RecipeForm
+        v-model:title="editTitle"
+        v-model:content="editContent"
+        v-model:tag-ids="editTagIds"
+        :tags="allTags"
+        :saving="saving"
+        submit-label="Save"
+        @submit="saveEdit"
+        @cancel="editing = false"
+      />
     </template>
 
     <!-- View mode -->
