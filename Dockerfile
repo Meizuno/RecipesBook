@@ -21,4 +21,4 @@ COPY --from=deps /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma ./
 COPY prisma ./prisma/
 
 EXPOSE 3000
-CMD ["node", ".output/server/index.mjs"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema ./prisma/schema.prisma && node .output/server/index.mjs"]
