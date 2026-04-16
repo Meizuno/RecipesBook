@@ -1,4 +1,4 @@
-import { getCookie, setCookie, deleteCookie, createError } from 'h3'
+import { getCookie, getHeader, setCookie, deleteCookie, createError } from 'h3'
 import type { H3Event } from 'h3'
 
 export type AuthUser = {
@@ -53,7 +53,13 @@ export const tryRefresh = async (event: H3Event): Promise<AuthUser | null> => {
 
 export const getAuthUser = async (event: H3Event): Promise<AuthUser | null> => {
   if (event.context.user) return event.context.user as AuthUser
-  const token = getCookie(event, 'cb_access') ?? null
+
+  // Check Bearer token first (MCP clients), then cookie (browser)
+  const header = getHeader(event, 'authorization')
+  const token = header?.toLowerCase().startsWith('bearer ')
+    ? header.slice(7).trim()
+    : (getCookie(event, 'cb_access') ?? null)
+
   if (token) {
     const user = await verifyAccessToken(token)
     if (user) {
