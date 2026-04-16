@@ -6,14 +6,17 @@ type Recipe = { id: number, title: string, content: string, tags: RecipeTag[], u
 const route = useRoute()
 const id = Number(route.params.id)
 
-const { data: recipe, refresh: refreshRecipe } = await useFetch<Recipe>(`/api/recipes/${id}`)
-const { data: allTags } = await useFetch<Tag[]>('/api/tags')
-
+const recipe = ref<Recipe | null>(null)
+const allTags = ref<Tag[]>([])
 const editing = ref(false)
 const editTitle = ref('')
 const editContent = ref('')
 const editTagIds = ref<number[]>([])
 const saving = ref(false)
+
+async function fetchRecipe() {
+  recipe.value = await $fetch<Recipe>(`/api/recipes/${id}`)
+}
 
 function startEdit() {
   if (!recipe.value) return
@@ -31,7 +34,7 @@ async function saveEdit() {
       method: 'PUT',
       body: { title: editTitle.value, content: editContent.value, tagIds: editTagIds.value }
     })
-    await refreshRecipe()
+    await fetchRecipe()
     editing.value = false
   } finally { saving.value = false }
 }
@@ -40,6 +43,10 @@ async function deleteRecipe() {
   await $fetch(`/api/recipes/${id}`, { method: 'DELETE' })
   await navigateTo('/')
 }
+
+onMounted(async () => {
+  await Promise.all([fetchRecipe(), $fetch<Tag[]>('/api/tags').then(t => { allTags.value = t })])
+})
 </script>
 
 <template>
@@ -61,7 +68,7 @@ async function deleteRecipe() {
         v-model:title="editTitle"
         v-model:content="editContent"
         v-model:tag-ids="editTagIds"
-        :tags="allTags ?? []"
+        :tags="allTags"
         :saving="saving"
         submit-label="Save"
         @submit="saveEdit"
