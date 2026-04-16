@@ -6,7 +6,7 @@ export default defineNuxtConfig({
     head: {
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png?ver=1.0' }
       ],
       meta: [
         { name: 'mobile-web-app-capable', content: 'yes' },
