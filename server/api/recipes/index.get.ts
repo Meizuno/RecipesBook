@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
+  await requireAuthUser(event)
   const query = getQuery(event)
   const tag = query.tag ? String(query.tag) : ''
   const search = query.search ? String(query.search) : ''
@@ -7,7 +7,6 @@ export default defineEventHandler(async (event) => {
   const db = getPrisma()
   return db.recipe.findMany({
     where: {
-      user_id: user.id,
       ...(search ? { title: { contains: search, mode: 'insensitive' as const } } : {}),
       ...(tag ? { tags: { some: { tag: { label: tag } } } } : {})
     },

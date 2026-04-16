@@ -4,13 +4,13 @@ import { registerRecipeTools } from '../utils/mcp/recipes'
 import { registerTagTools } from '../utils/mcp/tags'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
+  await requireAuthUser(event)
   const db = getPrisma()
 
-  const server = new McpServer({ name: 'cook-book', version: '1.0.0' })
+  const server = new McpServer({ name: 'recipes-book', version: '1.0.0' })
 
-  registerRecipeTools(server, db, user.id)
-  registerTagTools(server, db, user.id)
+  registerRecipeTools(server, db)
+  registerTagTools(server, db)
 
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
   await server.connect(transport)
