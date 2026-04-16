@@ -6,13 +6,13 @@ export default defineNuxtConfig({
     head: {
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
-        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png?ver=1.0' }
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }
       ],
       meta: [
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
-        { name: 'apple-mobile-web-app-title', content: 'Cook Book' },
+        { name: 'apple-mobile-web-app-title', content: 'Recipes Book' },
         { name: 'theme-color', content: '#f97316' }
       ]
     }
