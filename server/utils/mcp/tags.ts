@@ -18,37 +18,4 @@ export function registerTagTools(server: McpServer, db: PrismaClient, userId: st
       return toJson(tags)
     }
   )
-
-  server.registerTool(
-    'add_tag',
-    {
-      description: `Create a new recipe tag. Required: label. Color is assigned automatically.
-⚠️ WARNING: This action modifies user data. You MUST explicitly confirm with the user before calling this tool.`,
-      inputSchema: z.object({
-        label: z.string().describe('(required) Tag name, e.g. dinner, vegetarian, quick.')
-      })
-    },
-    async ({ label }) => {
-      const count = await db.tag.count({ where: { user_id: userId } })
-      const tag = await db.tag.create({
-        data: { user_id: userId, label, color: nextColor(count), position: count }
-      })
-      return toJson(tag)
-    }
-  )
-
-  server.registerTool(
-    'remove_tag',
-    {
-      description: `Delete a recipe tag by id.
-⚠️ WARNING: This action permanently deletes user data. You MUST explicitly confirm with the user before calling this tool.`,
-      inputSchema: z.object({
-        id: z.number().int().describe('(required) Tag ID to delete.')
-      })
-    },
-    async ({ id }) => {
-      await db.tag.delete({ where: { id, user_id: userId } })
-      return toJson({ deleted: id })
-    }
-  )
 }
