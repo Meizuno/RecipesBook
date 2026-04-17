@@ -22,7 +22,8 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    authServiceUrl: 'https://auth.meizuno.com'
+    authServiceUrl: 'https://auth.meizuno.com',
+    mcpApiKey: ''
   },
 
   nitro: {
