@@ -45,7 +45,7 @@ async function deleteRecipe() {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 py-8">
+  <div class="max-w-3xl mx-auto px-4" :class="editing ? 'pt-4 pb-2 h-[calc(100dvh-3rem)] overflow-hidden' : 'py-4'">
     <!-- Loading -->
     <div v-if="!recipe" class="space-y-4">
       <USkeleton class="h-8 w-64 rounded" />
@@ -54,11 +54,6 @@ async function deleteRecipe() {
 
     <!-- Edit mode (client-only interaction) -->
     <template v-else-if="editing">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-xl font-bold">Edit recipe</h1>
-        <UButton icon="i-lucide-x" variant="ghost" color="neutral" size="sm" label="Cancel" @click="editing = false" />
-      </div>
-
       <RecipeForm
         v-model:title="editTitle"
         v-model:content="editContent"

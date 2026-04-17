@@ -27,39 +27,40 @@ function onSubmit() {
 </script>
 
 <template>
-  <form class="space-y-4" @submit.prevent="onSubmit">
-    <UInput v-model="title" placeholder="Recipe title" size="lg" />
+  <form class="flex flex-col gap-4 h-full" @submit.prevent="onSubmit">
+    <UInput v-model="title" placeholder="Recipe title" size="lg" class="shrink-0" />
 
-    <TagPicker v-model="tagIds" :tags="tags" />
+    <TagPicker v-model="tagIds" :tags="tags" class="shrink-0" />
 
-    <!-- Mode toggle -->
-    <div class="flex gap-1 rounded-lg bg-muted p-1 w-fit">
-      <UButton size="xs" :variant="mode === 'edit' ? 'solid' : 'ghost'" color="primary" icon="i-lucide-pencil" label="Edit" @click="mode = 'edit'" />
-      <UButton size="xs" :variant="mode === 'preview' ? 'solid' : 'ghost'" color="primary" icon="i-lucide-eye" label="Preview" @click="mode = 'preview'" />
-    </div>
-
-    <!-- Editor -->
-    <UTextarea
-      v-if="mode === 'edit'"
-      ref="editor"
-      v-model="displayContent"
-      placeholder="Write your recipe in markdown…"
-      :rows="16"
-      autoresize
-      class="font-mono text-sm w-full"
-    />
-
-    <!-- Preview -->
-    <div v-else class="rounded-xl border border-default px-6 pb-6 min-h-96">
-      <div v-if="content" class="prose prose-sm dark:prose-invert max-w-none">
-        <MDC :value="content" />
+    <!-- Mode toggle + actions -->
+    <div class="flex items-center shrink-0">
+      <div class="flex gap-1 rounded-lg bg-muted p-1">
+        <UButton size="xs" :variant="mode === 'edit' ? 'solid' : 'ghost'" color="primary" icon="i-lucide-pencil" label="Edit" @click="mode = 'edit'" />
+        <UButton size="xs" :variant="mode === 'preview' ? 'solid' : 'ghost'" color="primary" icon="i-lucide-eye" label="Preview" @click="mode = 'preview'" />
       </div>
-      <p v-else class="text-muted italic">Nothing to preview</p>
+      <div class="flex-1" />
+      <div class="flex gap-2">
+        <UButton variant="ghost" color="neutral" label="Cancel" size="xs" @click="emit('cancel')" />
+        <UButton type="submit" color="primary" icon="i-lucide-save" :label="submitLabel ?? 'Save'" size="xs" :loading="saving" :disabled="!title.trim()" />
+      </div>
     </div>
 
-    <div class="flex justify-end gap-2">
-      <UButton variant="ghost" color="neutral" label="Cancel" @click="emit('cancel')" />
-      <UButton type="submit" color="primary" icon="i-lucide-save" :label="submitLabel ?? 'Save'" :loading="saving" :disabled="!title.trim()" />
+    <!-- Editor / Preview — fills remaining space -->
+    <div class="flex-1 min-h-0 overflow-hidden mb-2">
+      <UTextarea
+        v-if="mode === 'edit'"
+        ref="editor"
+        v-model="displayContent"
+        placeholder="Write your recipe in markdown…"
+        class="font-mono text-sm w-full h-full [&>div]:h-full [&_textarea]:h-full [&_textarea]:resize-none"
+      />
+      <div v-else class="h-full overflow-y-auto rounded-xl border border-default px-6 py-4">
+        <div v-if="content" class="prose prose-sm dark:prose-invert max-w-none">
+          <MDC :value="content" />
+        </div>
+        <p v-else class="text-muted italic">Nothing to preview</p>
+      </div>
     </div>
+
   </form>
 </template>

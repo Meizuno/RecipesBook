@@ -23,7 +23,7 @@ async function save() {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 py-8">
+  <div class="max-w-3xl mx-auto px-4 pt-4 pb-2 h-[calc(100dvh-3rem)] overflow-hidden">
     <RecipeForm
       v-model:title="title"
       v-model:content="content"

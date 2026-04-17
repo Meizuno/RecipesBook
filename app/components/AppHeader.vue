@@ -22,7 +22,8 @@ const userMenuItems = computed(() => [
 </script>
 
 <template>
-  <header v-if="loggedIn" class="flex items-center justify-between px-4 py-2.5 border-b border-default">
+  <header v-if="loggedIn" class="h-12 border-b border-default">
+    <div class="flex items-center justify-between h-full max-w-3xl mx-auto px-4">
     <!-- Brand -->
     <NuxtLink to="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
       <img src="/favicon.svg" class="w-6 h-6" alt="logo">
@@ -56,6 +57,7 @@ const userMenuItems = computed(() => [
           <UIcon name="i-lucide-chevron-down" class="size-3 text-muted shrink-0" />
         </UButton>
       </UDropdownMenu>
+    </div>
     </div>
   </header>
 </template>
