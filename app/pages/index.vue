@@ -6,23 +6,15 @@ type RecipesResponse = { items: Recipe[], total: number, hasMore: boolean }
 const LIMIT = 20
 const search = ref('')
 const activeTag = ref('')
+const tags = ref<Tag[]>([])
 const recipes = ref<Recipe[]>([])
 const hasMore = ref(false)
 const total = ref(0)
-const loading = ref(false)
+const loading = ref(true)
 const loadingMore = ref(false)
 const sentinel = ref<HTMLElement | null>(null)
 
-const { data: tags } = await useFetch<Tag[]>('/api/tags')
-const tagById = computed(() => new Map(tags.value?.map(t => [t.id, t]) ?? []))
-
-// SSR: initial load (useFetch auto-forwards cookies)
-const { data: initialData } = await useFetch<RecipesResponse>('/api/recipes', {
-  params: { limit: LIMIT, offset: 0 }
-})
-recipes.value = initialData.value?.items ?? []
-hasMore.value = initialData.value?.hasMore ?? false
-total.value = initialData.value?.total ?? 0
+const tagById = computed(() => new Map(tags.value.map(t => [t.id, t])))
 
 async function fetchRecipes(offset = 0, append = false) {
   if (append) loadingMore.value = true
@@ -52,22 +44,25 @@ function loadMore() {
   fetchRecipes(recipes.value.length, true)
 }
 
-// Client: reset on filter change
 watch([search, activeTag], () => fetchRecipes())
 
-// Client: infinite scroll observer
-if (import.meta.client) {
-  onMounted(() => {
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore() },
-      { rootMargin: '200px' }
-    )
-    watch(sentinel, (el) => {
-      if (el) observer.observe(el)
-    }, { immediate: true })
-    onUnmounted(() => observer.disconnect())
-  })
-}
+onMounted(async () => {
+  const [tagsData] = await Promise.all([
+    $fetch<Tag[]>('/api/tags'),
+    fetchRecipes()
+  ])
+  tags.value = tagsData
+
+  // Infinite scroll
+  const observer = new IntersectionObserver(
+    (entries) => { if (entries[0].isIntersecting) loadMore() },
+    { rootMargin: '200px' }
+  )
+  watch(sentinel, (el) => {
+    if (el) observer.observe(el)
+  }, { immediate: true })
+  onUnmounted(() => observer.disconnect())
+})
 
 async function deleteRecipe(id: number) {
   await $fetch(`/api/recipes/${id}`, { method: 'DELETE' })
@@ -78,8 +73,6 @@ async function deleteRecipe(id: number) {
 function toggleTag(label: string) {
   activeTag.value = activeTag.value === label ? '' : label
 }
-
-
 </script>
 
 <template>
@@ -87,7 +80,7 @@ function toggleTag(label: string) {
     <!-- Search + tag filter -->
     <div class="space-y-3 mb-4">
       <UInput v-model="search" icon="i-lucide-search" placeholder="Search recipes…" />
-      <div v-if="tags?.length" class="flex flex-wrap gap-1.5">
+      <div v-if="tags.length" class="flex flex-wrap gap-1.5">
         <button
           v-for="tag in tags"
           :key="tag.id"
@@ -105,7 +98,7 @@ function toggleTag(label: string) {
 
     <!-- Recipe list -->
     <div v-if="loading" class="space-y-3">
-      <USkeleton v-for="i in 5" :key="i" class="h-20 w-full rounded-xl" />
+      <USkeleton v-for="i in 5" :key="i" class="h-14 w-full rounded-xl" />
     </div>
     <div v-else class="space-y-2">
       <NuxtLink

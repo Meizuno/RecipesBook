@@ -4,10 +4,12 @@ type Tag = { id: number, label: string, color: string }
 const title = ref('')
 const content = ref('')
 const tagIds = ref<number[]>([])
+const tags = ref<Tag[]>([])
 const saving = ref(false)
 
-// SSR: tags loaded on server
-const { data: tags } = await useFetch<Tag[]>('/api/tags')
+onMounted(async () => {
+  tags.value = await $fetch<Tag[]>('/api/tags')
+})
 
 async function save() {
   if (!title.value.trim() || saving.value) return
@@ -28,7 +30,7 @@ async function save() {
       v-model:title="title"
       v-model:content="content"
       v-model:tag-ids="tagIds"
-      :tags="tags ?? []"
+      :tags="tags"
       :saving="saving"
       submit-label="Save recipe"
       @submit="save"
