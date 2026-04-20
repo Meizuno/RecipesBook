@@ -25,8 +25,8 @@ export default defineEventHandler(async (event) => {
       select: {
         id: true,
         title: true,
+        content: true,
         updated_at: true,
-        content: search ? true : false,
         tags: { select: { tag_id: true } }
       },
       orderBy: { updated_at: 'desc' },
@@ -37,11 +37,16 @@ export default defineEventHandler(async (event) => {
   ])
 
   const makeSnippet = (content: string) => {
-    const idx = content.toLowerCase().indexOf(search.toLowerCase())
-    if (idx < 0) return null
-    const start = Math.max(0, idx - 40)
-    const end = Math.min(content.length, idx + search.length + 40)
-    return (start > 0 ? '…' : '') + content.slice(start, end) + (end < content.length ? '…' : '')
+    if (!content) return null
+    if (search) {
+      const idx = content.toLowerCase().indexOf(search.toLowerCase())
+      if (idx >= 0) {
+        const start = Math.max(0, idx - 40)
+        const end = Math.min(content.length, idx + search.length + 40)
+        return (start > 0 ? '…' : '') + content.slice(start, end) + (end < content.length ? '…' : '')
+      }
+    }
+    return content.slice(0, 120).trim() + (content.length > 120 ? '…' : '')
   }
 
   return {
@@ -50,7 +55,7 @@ export default defineEventHandler(async (event) => {
       title: r.title,
       updated_at: r.updated_at,
       tagIds: r.tags.map(t => t.tag_id),
-      snippet: search && 'content' in r ? makeSnippet(r.content as string) : null
+      snippet: makeSnippet(r.content)
     })),
     total,
     hasMore: offset + items.length < total
