@@ -1,6 +1,6 @@
 <script setup lang="ts">
 type Tag = { id: number, label: string, color: string }
-type Recipe = { id: number, title: string, tagIds: number[], updated_at: string }
+type Recipe = { id: number, title: string, tagIds: number[], updated_at: string, snippet?: string | null }
 type RecipesResponse = { items: Recipe[], total: number, hasMore: boolean }
 
 const LIMIT = 20
@@ -113,6 +113,7 @@ function toggleTag(label: string) {
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0 flex-1">
             <p class="font-semibold text-sm truncate">{{ recipe.title }}</p>
+            <p v-if="recipe.snippet" class="text-xs text-muted mt-1 line-clamp-2">{{ recipe.snippet }}</p>
             <div v-if="recipe.tagIds.length" class="flex flex-wrap gap-1 mt-2">
               <span
                 v-for="id in recipe.tagIds"

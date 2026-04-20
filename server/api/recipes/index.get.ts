@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
         id: true,
         title: true,
         updated_at: true,
+        content: search ? true : false,
         tags: { select: { tag_id: true } }
       },
       orderBy: { updated_at: 'desc' },
@@ -35,8 +36,22 @@ export default defineEventHandler(async (event) => {
     db.recipe.count({ where })
   ])
 
+  const makeSnippet = (content: string) => {
+    const idx = content.toLowerCase().indexOf(search.toLowerCase())
+    if (idx < 0) return null
+    const start = Math.max(0, idx - 40)
+    const end = Math.min(content.length, idx + search.length + 40)
+    return (start > 0 ? '…' : '') + content.slice(start, end) + (end < content.length ? '…' : '')
+  }
+
   return {
-    items: items.map(r => ({ ...r, tagIds: r.tags.map(t => t.tag_id), tags: undefined })),
+    items: items.map(r => ({
+      id: r.id,
+      title: r.title,
+      updated_at: r.updated_at,
+      tagIds: r.tags.map(t => t.tag_id),
+      snippet: search && 'content' in r ? makeSnippet(r.content as string) : null
+    })),
     total,
     hasMore: offset + items.length < total
   }

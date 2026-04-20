@@ -51,15 +51,6 @@ export default defineEventHandler(async (event) => {
     db.recipe.count({ where })
   ])
 
-  const makeSnippet = (content: string) => {
-    if (!search) return null
-    const idx = content.toLowerCase().indexOf(search.toLowerCase())
-    if (idx < 0) return null
-    const start = Math.max(0, idx - 40)
-    const end = Math.min(content.length, idx + search.length + 40)
-    return (start > 0 ? '…' : '') + content.slice(start, end) + (end < content.length ? '…' : '')
-  }
-
   return {
     component: 'recipes',
     tags,
@@ -67,8 +58,7 @@ export default defineEventHandler(async (event) => {
       id: r.id,
       title: r.title,
       tags: r.tags.map(rt => rt.tag.label),
-      hasContent: r.content.length > 0,
-      snippet: makeSnippet(r.content)
+      hasContent: r.content.length > 0
     })),
     total,
     hasMore: offset + items.length < total,
