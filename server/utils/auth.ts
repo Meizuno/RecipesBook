@@ -1,5 +1,6 @@
 import { getCookie, getHeader, setCookie, deleteCookie, createError } from 'h3'
 import type { H3Event } from 'h3'
+import { getWarmCacheToken } from './warm-cache'
 
 export type AuthUser = {
   id: string
@@ -44,6 +45,17 @@ let ssrRefreshedToken: string | null = null
 export async function authenticate(event: H3Event): Promise<AuthUser | null> {
   // Already authenticated (e.g. by a previous middleware run)
   if (event.context.user) return event.context.user as AuthUser
+
+  // Cache-warmer bypass. Loopback requests from the in-process warmer
+  // carry a process-local token nothing outside the process can know.
+  // Skips the round-trip to the auth service for the warm flow.
+  const warmToken = getHeader(event, 'x-warm-cache')
+  const warmUserId = getHeader(event, 'x-warm-cache-user')
+  if (warmToken && warmToken === getWarmCacheToken() && warmUserId) {
+    const user: AuthUser = { id: warmUserId }
+    event.context.user = user
+    return user
+  }
 
   // 1. Check Bearer header (MCP clients) or access token cookie or SSR-refreshed token
   const header = getHeader(event, 'authorization')
