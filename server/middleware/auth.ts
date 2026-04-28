@@ -16,14 +16,11 @@ export default defineEventHandler(async (event) => {
   if (SKIP_PATHS.some((p) => path.startsWith(p))) return;
 
   const isApi = path.startsWith("/api/");
-  const isIsland = path.startsWith("/__nuxt_island/");
-  const isStatic = path.includes(".") && !isIsland;
-  const isPage = !isApi && !isStatic && !isIsland;
+  const isStatic = path.includes(".");
+  const isPage = !isApi && !isStatic;
 
-  // Authenticate page, API, and island requests — islands need
-  // event.context.user so the per-user page-cache middleware can
-  // scope cache keys by user ID.
-  if (isApi || isPage || isIsland) {
+  // Authenticate page and API requests.
+  if (isApi || isPage) {
     await authenticate(event);
   }
 

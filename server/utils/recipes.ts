@@ -1,14 +1,8 @@
 import { getPrisma } from './db'
 
-// Shared recipe-loading projection used by both `/api/recipes/[id]` and
-// the `RecipeView` island component. Centralizing the select here keeps
-// the projection identical across both call sites and lets the island
-// hit the DB directly (no HTTP loopback, no auth handshake — its outer
-// island request was already authed by the time setup runs).
-//
-// `getPrisma` is imported explicitly (not via Nitro auto-import) because
-// this file is also pulled into the Vue server bundle for the island
-// component, where Nitro auto-imports don't apply.
+// Shared recipe projection used by `/api/recipes/[id]` (edit form
+// load). The streaming view endpoint at `/api/recipes/[id]/stream`
+// embeds its own select and emits metadata + content over the wire.
 
 export type RecipeWithTags = {
   id: number

@@ -21,6 +21,17 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@nuxtjs/mdc'],
   css: ['~/assets/css/main.css'],
 
+  // Bundle every icon referenced in source into the client build, so
+  // there are no runtime `/api/_nuxt_icon/*` fetches. `scan` walks the
+  // project files for `i-<collection>-<name>` strings and component
+  // `name` props.
+  icon: {
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 256
+    }
+  },
+
   runtimeConfig: {
     authServiceUrl: 'https://auth.meizuno.com',
     mcpApiKey: ''
@@ -35,10 +46,9 @@ export default defineNuxtConfig({
       // API responses: never cached at the Nitro layer; auth middleware
       // gates per-request.
       '/api/**': { cache: false }
-      // Page + island caching is handled by `server/middleware/page-cache.ts`,
-      // which writes plain `.html` and `.json` files into `.cache/pages/`
-      // and `.cache/islands/`, and wipes them on /api/recipes /api/tags
-      // mutations.
+      // Home-page caching is handled by `server/middleware/page-cache.ts`,
+      // which writes plain `.html` files into `.cache/pages/` keyed on
+      // user_id and wipes them on /api/recipes /api/tags mutations.
     }
   }
 })

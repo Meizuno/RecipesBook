@@ -2,9 +2,11 @@ import { existsSync, promises as fsp } from 'node:fs'
 import { dirname } from 'node:path'
 import { homeFilePath } from '../middleware/page-cache'
 
-// Write side of the home-page cache. Mirror of `island-cache.ts` plugin
-// for the bare `/` route. See `server/middleware/page-cache.ts` for
-// disk layout and key choices.
+// Write side of the home-page cache. The `beforeResponse` hook is the
+// h3-v2-safe way to observe a response body — patching `res.write/end`
+// from middleware no longer captures responses sent through Web
+// Response paths. See `server/middleware/page-cache.ts` for disk
+// layout and key choices.
 
 export default defineNitroPlugin((nitroApp) => {
   if (import.meta.dev) return

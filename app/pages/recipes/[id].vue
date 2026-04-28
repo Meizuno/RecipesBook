@@ -6,8 +6,9 @@ type Recipe = { id: number, title: string, content: string, tags: RecipeTag[], u
 const route = useRoute()
 const id = Number(route.params.id)
 
-// `version` is a local cache-busting prop for the RecipeView island.
-// Bumped on every successful edit so the next island fetch goes through.
+// `version` is bumped on every successful edit and used as the `:key`
+// on `<RecipeStream>` so the component remounts and re-fetches the
+// stream after a save.
 const version = ref(0)
 
 // Edit-mode state and lazily-loaded edit data. The parent never fetches
@@ -90,9 +91,10 @@ async function deleteRecipe() {
         <UButton icon="i-lucide-trash-2" variant="ghost" color="error" size="sm" @click="deleteRecipe" />
       </div>
 
-      <!-- Server-rendered + cached island: title, tags, MDC body, date.
-           `v` is a local counter that bumps on save to invalidate cache. -->
-      <RecipeView :id="id" :v="version" />
+      <!-- Everything (metadata + body) streams from
+           /api/recipes/<id>/stream so navigation is instant and the
+           page paints progressively as bytes arrive. -->
+      <RecipeStream :id="id" :key="version" />
     </template>
   </div>
 </template>

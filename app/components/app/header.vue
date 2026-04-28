@@ -1,9 +1,9 @@
 <script setup lang="ts">
 const { user, loggedIn, logout } = useAuth()
 
-// Server-side fetch: page HTML isn't cached across users (only the
-// RecipeView island fragment is, and that's user-agnostic markdown),
-// so it's fine to bake the current user into the SSR response.
+// Server-side fetch: home-page HTML is cached per-user (keyed on
+// user_id), so the rendered header is always paired with the correct
+// user. Safe to bake into the SSR response.
 const { data: meData } = await useFetch<{ user: AuthUser }>('/api/auth/me')
 user.value = meData.value?.user ?? null
 
