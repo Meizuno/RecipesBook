@@ -16,6 +16,7 @@ const showHeader = computed(() => route.path !== '/login')
 
 <template>
   <UApp>
+    <NuxtRouteAnnouncer />
     <AppHeader v-if="showHeader" />
     <NuxtPage />
   </UApp>
