@@ -1,9 +1,8 @@
 <script setup lang="ts">
 const { user, loggedIn, logout } = useAuth()
 
-// Server-side fetch: home-page HTML is cached per-user (keyed on
-// user_id), so the rendered header is always paired with the correct
-// user. Safe to bake into the SSR response.
+// Server-side fetch: bakes the current user into the SSR response so
+// the dropdown is correct on first paint, no client-side flicker.
 const { data: meData } = await useFetch<{ user: AuthUser }>('/api/auth/me')
 user.value = meData.value?.user ?? null
 

@@ -1,12 +1,13 @@
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
+  await requireAuthUser(event)
   const id = Number(getRouterParam(event, 'id'))
   const { title, content, tagIds } = await readBody<{ title?: string, content?: string, tagIds?: number[] }>(event)
 
   const db = getPrisma()
 
-  // Verify ownership
-  const existing = await db.recipe.findFirst({ where: { id, user_id: user.id, is_deleted: false } })
+  // Recipes are a shared workspace — any authenticated user can edit
+  // any recipe. Just verify it exists and isn't soft-deleted.
+  const existing = await db.recipe.findFirst({ where: { id, is_deleted: false } })
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Recipe not found' })
 
   // Sync tags if provided

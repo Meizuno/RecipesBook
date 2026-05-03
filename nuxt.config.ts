@@ -46,9 +46,6 @@ export default defineNuxtConfig({
       // API responses: never cached at the Nitro layer; auth middleware
       // gates per-request.
       '/api/**': { cache: false }
-      // Home-page caching is handled by `server/middleware/page-cache.ts`,
-      // which writes plain `.html` files into `.cache/pages/` keyed on
-      // user_id and wipes them on /api/recipes /api/tags mutations.
     }
   }
 })
