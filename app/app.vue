@@ -7,11 +7,17 @@ useHead({
 
 useSeoMeta({ title: 'Cook Book' })
 
-// Hide the header on /login so it doesn't render on the static prerendered
-// login page. AppHeader itself always renders its structure to avoid layout
-// shift while client-side auth resolves.
 const route = useRoute()
 const showHeader = computed(() => route.path !== '/login')
+
+// Hydrate the shared auth state once at the app root. SSR-fetched so
+// the header dropdown paints correctly on first byte, no client-side
+// flicker. Skipped on /login — user is unauthenticated by definition.
+const { user } = useAuth()
+if (route.path !== '/login') {
+  const { data } = await useFetch<{ user: AuthUser }>('/api/auth/me')
+  user.value = data.value?.user ?? null
+}
 </script>
 
 <template>

@@ -1,10 +1,6 @@
 <script setup lang="ts">
+// `useAuth()` exposes shared state populated by `app.vue` at the root.
 const { user, loggedIn, logout } = useAuth()
-
-// Server-side fetch: bakes the current user into the SSR response so
-// the dropdown is correct on first paint, no client-side flicker.
-const { data: meData } = await useFetch<{ user: AuthUser }>('/api/auth/me')
-user.value = meData.value?.user ?? null
 
 const userMenuItems = computed(() => [
   [
