@@ -13,25 +13,36 @@
 //     copy-paste — `•◦▪▫‣⁃`)
 // Remark would parse these as paragraph text, not a list, so we
 // normalize them to `- item` before parsing. Repair only runs when
-// 2+ consecutive lines look like list items, so a stray `*emphasis*`
-// or single line starting with `•` (rare) won't be misclassified.
+// 2+ consecutive list markers appear, so a stray `*emphasis*` or
+// single line starting with `•` (rare) won't be misclassified.
 //
-// We also promote a preceding line ending with `:` to a `##` heading
-// when it's short — recipes use section titles like "Інгредієнти:",
-// "Для теста:", "Instructions:" right above the list. The trailing
-// colon is dropped (headings don't need it).
+// Numbered lists (`1. text`, `1) text`) are also detected but pass
+// through unchanged — they're already valid CommonMark. Their
+// indented continuation lines (`   detail under item`) are part of
+// the run so the run-length count is right and a preceding "Title:"
+// line still gets promoted.
+//
+// Title promotion: a short paragraph ending with `:` immediately
+// before a list is converted to a `## Title` heading. Recipe sections
+// like "Приготування:", "Інгредієнти:", "Instructions:" become real
+// headings instead of plain prose.
 //
 // Remark is loaded lazily so the ~50KB bundle only ships when the user
 // actually clicks the Format button.
 
-const UNICODE_BULLET_RE = /^[•◦▪▫‣⁃]\s*/  // • ◦ ▪ ▫ ‣ ⁃
-const STANDARD_BROKEN_RE = /^[-*+]\S/                                  // -item / *item / +item
-const STANDARD_OK_RE = /^[-*+]\s/                                      // - item
+const UNICODE_BULLET_RE = /^[•◦▪▫‣⁃]\s*/    // • ◦ ▪ ▫ ‣ ⁃
+const STANDARD_BROKEN_RE = /^[-*+]\S/        // -item / *item / +item
+const STANDARD_OK_RE = /^[-*+]\s/            // - item
+const NUMBERED_RE = /^\d+[.)]\s/             // 1. item / 1) item
+const INDENTED_RE = /^\s+\S/                 // continuation line (any leading whitespace)
 
 const TITLE_MAX_LEN = 60
 
-function isListLooking(line: string): boolean {
-  return UNICODE_BULLET_RE.test(line) || STANDARD_BROKEN_RE.test(line) || STANDARD_OK_RE.test(line)
+function isListMarker(line: string): boolean {
+  return UNICODE_BULLET_RE.test(line)
+    || STANDARD_BROKEN_RE.test(line)
+    || STANDARD_OK_RE.test(line)
+    || NUMBERED_RE.test(line)
 }
 
 function fixListLine(line: string): string {
@@ -45,10 +56,6 @@ function isPromotableTitle(line: string): boolean {
   if (!t.endsWith(':')) return false
   if (t.startsWith('#')) return false           // already a heading
   if (t.length > TITLE_MAX_LEN) return false    // probably a sentence, not a title
-  // Skip if the colon is part of a URL/timestamp/etc. — that's longer
-  // and contains a `:` mid-line, not at the very end. Trailing-only
-  // matters, so a line like "https://x:80" with nothing after `:` is
-  // already excluded by the prior length check for typical cases.
   return true
 }
 
@@ -57,9 +64,25 @@ function repairListMarkers(input: string): string {
   const out: string[] = []
   let i = 0
   while (i < lines.length) {
+    // Walk forward through a contiguous list block. A list block is
+    // a sequence of marker lines plus their indented continuation
+    // lines (no blank lines).
     let j = i
-    while (j < lines.length && isListLooking(lines[j])) j++
-    if (j - i >= 2) {
+    let markerCount = 0
+    while (j < lines.length) {
+      if (isListMarker(lines[j]!)) {
+        markerCount++
+        j++
+      }
+      else if (markerCount > 0 && INDENTED_RE.test(lines[j]!)) {
+        j++
+      }
+      else {
+        break
+      }
+    }
+
+    if (markerCount >= 2) {
       // Promote a preceding "Title:" line to `## Title`. Skip back
       // through blank lines to find the last non-empty entry.
       let prevIdx = out.length - 1
@@ -69,11 +92,15 @@ function repairListMarkers(input: string): string {
         const trimmed = prev.trim()
         out[prevIdx] = `## ${trimmed.slice(0, -1).trim()}`
       }
-      for (let k = i; k < j; k++) out.push(fixListLine(lines[k]))
+      // Repair only marker lines — continuations stay as-is.
+      for (let k = i; k < j; k++) {
+        const line = lines[k]!
+        out.push(isListMarker(line) ? fixListLine(line) : line)
+      }
       i = j
     }
     else {
-      out.push(lines[i])
+      out.push(lines[i]!)
       i++
     }
   }
