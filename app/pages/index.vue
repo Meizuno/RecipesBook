@@ -28,7 +28,7 @@ let controller: AbortController | null = null
 
 // Tags still SSR-fetched: small, fits the initial payload, and the
 // list is needed before any recipe cards render to color the chips.
-const { data: tags } = await useFetch<Tag[]>('/api/tags', { key: 'tags' })
+const { data: tags } = await useFetch<Tag[]>('/api/tags')
 const tagById = computed(() => new Map(tags.value?.map(t => [t.id, t]) ?? []))
 
 async function streamRecipes(offset = 0, append = false) {
