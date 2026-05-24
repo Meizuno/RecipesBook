@@ -1,7 +1,12 @@
 export default defineEventHandler(async (event) => {
   await requireAuthUser(event)
   const id = Number(getRouterParam(event, 'id'))
-  const { title, content, tagIds } = await readBody<{ title?: string, content?: string, tagIds?: number[] }>(event)
+  const { title, content, tagIds, is_favorite } = await readBody<{
+    title?: string
+    content?: string
+    tagIds?: number[]
+    is_favorite?: boolean
+  }>(event)
 
   const db = getPrisma()
 
@@ -22,7 +27,8 @@ export default defineEventHandler(async (event) => {
     where: { id },
     data: {
       ...(title !== undefined ? { title: title.trim() } : {}),
-      ...(content !== undefined ? { content } : {})
+      ...(content !== undefined ? { content } : {}),
+      ...(is_favorite !== undefined ? { is_favorite } : {})
     },
     include: { tags: { include: { tag: true } } }
   })

@@ -8,18 +8,24 @@ datasource db {
 }
 
 model Recipe {
-  id         Int         @id @default(autoincrement())
-  user_id    String
-  title      String      @db.VarChar(300)
-  content    String      @default("") @db.Text
-  is_deleted Boolean     @default(false)
-  created_at DateTime    @default(now())
-  updated_at DateTime    @default(now()) @updatedAt
+  id          Int         @id @default(autoincrement())
+  user_id     String
+  title       String      @db.VarChar(300)
+  content     String      @default("") @db.Text
+  // Per-user "favorite" flag used to pin standout recipes on the
+  // home grid + drive the favorites-only filter. Stored on the
+  // recipe row itself because the workspace is shared — anyone's
+  // favoring promotes the recipe for everyone.
+  is_favorite Boolean     @default(false)
+  is_deleted  Boolean     @default(false)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @default(now()) @updatedAt
 
-  tags       RecipeTag[]
+  tags        RecipeTag[]
 
   @@index([user_id])
   @@index([user_id, is_deleted])
+  @@index([is_favorite])
   @@index([title(ops: raw("gin_trgm_ops"))],   type: Gin)
   @@index([content(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("recipes")

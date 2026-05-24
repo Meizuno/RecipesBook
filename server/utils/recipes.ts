@@ -8,6 +8,7 @@ export type RecipeWithTags = {
   id: number
   title: string
   content: string
+  is_favorite: boolean
   updated_at: Date
   tags: { tag_id: number, tag: { id: number, label: string, color: string } }[]
 }
@@ -19,6 +20,7 @@ export function loadRecipe(id: number): Promise<RecipeWithTags | null> {
       id: true,
       title: true,
       content: true,
+      is_favorite: true,
       updated_at: true,
       tags: {
         select: {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 type Tag = { id: number, label: string, color: string }
-type Recipe = { id: number, title: string, tagIds: number[], updated_at: string, snippet?: string | null }
+type Recipe = { id: number, title: string, is_favorite: boolean, tagIds: number[], updated_at: string, snippet?: string | null }
 type Meta = { total: number, hasMore: boolean }
 
 const LIMIT = 20
@@ -13,6 +13,8 @@ const parseTags = (raw: unknown): string[] =>
   (Array.isArray(raw) ? raw : raw ? [raw] : []).map(s => String(s).trim()).filter(Boolean)
 const search = ref(String(route.query.search || ''))
 const activeTags = ref<string[]>(parseTags(route.query.tags))
+// Favorites filter — `?favorite=1` in URL.
+const favoritesOnly = ref(String(route.query.favorite || '') === '1')
 
 // Persist result state across SPA navigations so going
 // home → recipe → home is instant (no re-stream).
@@ -44,6 +46,7 @@ async function streamRecipes(offset = 0, append = false) {
     params.set('limit', String(LIMIT))
     params.set('offset', String(offset))
     if (search.value) params.set('search', search.value)
+    if (favoritesOnly.value) params.set('favorite', '1')
     for (const t of activeTags.value) params.append('tags', t)
 
     const res = await fetch(`/api/recipes?${params}`, { signal })
@@ -120,15 +123,18 @@ function loadMore() {
 watch(() => route.query, (q) => {
   const urlSearch = String(q.search || '')
   const urlTags = parseTags(q.tags)
+  const urlFav = String(q.favorite || '') === '1'
   if (urlSearch !== search.value) search.value = urlSearch
   if (urlTags.join(' ') !== activeTags.value.join(' ')) activeTags.value = urlTags
+  if (urlFav !== favoritesOnly.value) favoritesOnly.value = urlFav
 })
 
 // Push refs → URL and re-stream on filter change.
-watch([search, activeTags], () => {
+watch([search, activeTags, favoritesOnly], () => {
   const q: Record<string, string | string[]> = {}
   if (search.value) q.search = search.value
   if (activeTags.value.length) q.tags = activeTags.value
+  if (favoritesOnly.value) q.favorite = '1'
   navigateTo({ query: q }, { replace: true })
   streamRecipes()
 })
@@ -175,6 +181,31 @@ function toggleTag(label: string) {
     ? activeTags.value.filter(t => t !== label)
     : [...activeTags.value, label]
 }
+
+// Optimistic toggle: flip the local flag immediately so the star
+// reacts to the tap, then PUT in the background. On failure, revert
+// the in-memory state so the UI stays honest.
+async function toggleFavorite(recipe: Recipe) {
+  const next = !recipe.is_favorite
+  recipe.is_favorite = next
+  try {
+    await $fetch(`/api/recipes/${recipe.id}`, {
+      method: 'PUT',
+      body: { is_favorite: next }
+    })
+    // If the filter is "favorites only" and we just unfavorited,
+    // drop the card from the list to stay consistent with the
+    // filter the user is actively viewing.
+    if (favoritesOnly.value && !next) {
+      recipes.value = recipes.value.filter(r => r.id !== recipe.id)
+      total.value = Math.max(0, total.value - 1)
+    }
+  }
+  catch (err) {
+    recipe.is_favorite = !next
+    console.error('[home] toggle favorite failed:', err)
+  }
+}
 </script>
 
 <template>
@@ -182,7 +213,19 @@ function toggleTag(label: string) {
     <!-- Search + tag filter -->
     <div class="space-y-3 mb-4">
       <UInput v-model="search" icon="i-lucide-search" placeholder="Search recipes…" />
-      <div v-if="tags?.length" class="flex flex-wrap gap-1.5">
+      <div class="flex flex-wrap gap-1.5">
+        <!-- Favorites filter: amber star pill sitting alongside the
+             tag chips so all filters live in one row. -->
+        <button
+          class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer inline-flex items-center gap-1"
+          :class="favoritesOnly
+            ? 'bg-amber-500 text-white'
+            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'"
+          @click="favoritesOnly = !favoritesOnly"
+        >
+          <UIcon name="i-lucide-star" class="size-3" />
+          Favorites
+        </button>
         <button
           v-for="tag in tags"
           :key="tag.id"
@@ -223,13 +266,23 @@ function toggleTag(label: string) {
                 >{{ tagById.get(id)?.label }}</span>
               </div>
             </div>
-            <UButton
-              icon="i-lucide-trash-2"
-              variant="ghost"
-              color="error"
-              size="xs"
-              @click.prevent="deleteRecipe(recipe.id)"
-            />
+            <div class="flex items-center gap-1 shrink-0">
+              <UButton
+                :icon="recipe.is_favorite ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+                variant="ghost"
+                :color="recipe.is_favorite ? 'warning' : 'neutral'"
+                size="xs"
+                :aria-label="recipe.is_favorite ? 'Unmark as favorite' : 'Mark as favorite'"
+                @click.prevent="toggleFavorite(recipe)"
+              />
+              <UButton
+                icon="i-lucide-trash-2"
+                variant="ghost"
+                color="error"
+                size="xs"
+                @click.prevent="deleteRecipe(recipe.id)"
+              />
+            </div>
           </div>
         </NuxtLink>
       </TransitionGroup>

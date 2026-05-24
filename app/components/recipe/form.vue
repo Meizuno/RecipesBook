@@ -15,6 +15,7 @@ const emit = defineEmits<{
 const title = defineModel<string>('title', { default: '' })
 const content = defineModel<string>('content', { default: '' })
 const tagIds = defineModel<number[]>('tagIds', { default: () => [] })
+const isFavorite = defineModel<boolean>('isFavorite', { default: false })
 
 const mode = ref<'edit' | 'preview'>('edit')
 const editorRef = useTemplateRef<any>('editor')
@@ -41,7 +42,20 @@ function onSubmit() {
 
 <template>
   <form class="flex flex-col gap-4 h-full" @submit.prevent="onSubmit">
-    <UInput v-model="title" placeholder="Recipe title" size="lg" class="shrink-0" />
+    <div class="flex items-center gap-2 shrink-0">
+      <UInput v-model="title" placeholder="Recipe title" size="lg" class="flex-1" />
+      <!-- Star toggle sits inline with the title so favoring feels
+           like part of "naming" the recipe rather than a buried
+           settings flag. Visual swap (filled vs outline) tracks state. -->
+      <UButton
+        :icon="isFavorite ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+        :color="isFavorite ? 'warning' : 'neutral'"
+        :variant="isFavorite ? 'soft' : 'ghost'"
+        size="lg"
+        :aria-label="isFavorite ? 'Unmark as favorite' : 'Mark as favorite'"
+        @click="isFavorite = !isFavorite"
+      />
+    </div>
 
     <TagPicker v-model="tagIds" :tags="tags" class="shrink-0" />
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 type Tag = { id: number, label: string, color: string }
 type RecipeTag = { tag_id: number, tag: Tag }
-type Recipe = { id: number, title: string, content: string, tags: RecipeTag[], updated_at: string }
+type Recipe = { id: number, title: string, content: string, is_favorite: boolean, tags: RecipeTag[], updated_at: string }
 
 const route = useRoute()
 const id = Number(route.params.id)
@@ -19,6 +19,7 @@ const editing = ref(false)
 const editTitle = ref('')
 const editContent = ref('')
 const editTagIds = ref<number[]>([])
+const editIsFavorite = ref(false)
 const saving = ref(false)
 const loadingEdit = ref(false)
 const allTags = ref<Tag[] | null>(null)
@@ -35,6 +36,7 @@ async function startEdit() {
     editTitle.value = recipe.title
     editContent.value = recipe.content
     editTagIds.value = recipe.tags.map(rt => rt.tag_id)
+    editIsFavorite.value = recipe.is_favorite
     editing.value = true
   }
   finally { loadingEdit.value = false }
@@ -46,7 +48,12 @@ async function saveEdit() {
   try {
     await $fetch(`/api/recipes/${id}`, {
       method: 'PUT',
-      body: { title: editTitle.value, content: editContent.value, tagIds: editTagIds.value }
+      body: {
+        title: editTitle.value,
+        content: editContent.value,
+        tagIds: editTagIds.value,
+        is_favorite: editIsFavorite.value
+      }
     })
     version.value++  // invalidate the cached island for this recipe
     editing.value = false
@@ -76,6 +83,7 @@ async function deleteRecipe() {
         v-model:title="editTitle"
         v-model:content="editContent"
         v-model:tag-ids="editTagIds"
+        v-model:is-favorite="editIsFavorite"
         :tags="allTags ?? []"
         :saving="saving"
         submit-label="Save"

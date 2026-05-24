@@ -7,19 +7,21 @@ export function registerRecipeTools(server: McpServer, db: PrismaClient) {
   server.registerTool(
     'list_recipes',
     {
-      description: 'List or search recipes. Optional `query` matches against title and content (case-insensitive substring, trigram-indexed); optional `tag` filters by exact tag label. Returns items (id, title, tagIds, hasContent, and snippet when a query matched the content), total count, and hasMore flag. Use get_recipe for full content. Default limit is 20.',
+      description: 'List or search recipes. Optional `query` matches against title and content (case-insensitive substring, trigram-indexed); optional `tag` filters by exact tag label; optional `favorite` restricts to favorited recipes only. Returns items (id, title, tagIds, isFavorite, hasContent, and snippet when a query matched the content), total count, and hasMore flag. Use get_recipe for full content. Default limit is 20.',
       inputSchema: z.object({
         query: z.string().optional().describe('Keyword matched against title and content. Omit to list all recipes.'),
         tag: z.string().optional().describe('Filter by exact tag label.'),
+        favorite: z.boolean().optional().describe('When true, return only recipes flagged as favorite.'),
         limit: z.number().int().optional().describe('Max items to return (default 20, max 100).'),
         offset: z.number().int().optional().describe('Number of items to skip (default 0).')
       })
     },
-    async ({ query, tag, limit, offset }) => {
+    async ({ query, tag, favorite, limit, offset }) => {
       const take = Math.min(limit ?? 20, 100)
       const skip = offset ?? 0
       const where = {
         is_deleted: false,
+        ...(favorite ? { is_favorite: true } : {}),
         ...(query ? {
           OR: [
             { title:   { contains: query, mode: 'insensitive' as const } },
@@ -36,9 +38,10 @@ export function registerRecipeTools(server: McpServer, db: PrismaClient) {
             id: true,
             title: true,
             content: true,
+            is_favorite: true,
             tags: { select: { tag_id: true } }
           },
-          orderBy: { updated_at: 'desc' },
+          orderBy: [{ is_favorite: 'desc' }, { updated_at: 'desc' }],
           take,
           skip
         }),
@@ -59,6 +62,7 @@ export function registerRecipeTools(server: McpServer, db: PrismaClient) {
           id: r.id,
           title: r.title,
           tagIds: r.tags.map(rt => rt.tag_id),
+          isFavorite: r.is_favorite,
           hasContent: r.content.length > 0,
           snippet: makeSnippet(r.content)
         })),
@@ -71,7 +75,7 @@ export function registerRecipeTools(server: McpServer, db: PrismaClient) {
   server.registerTool(
     'get_recipe',
     {
-      description: 'Get full recipe by id. Returns title, content (markdown), tags, and timestamps.',
+      description: 'Get full recipe by id. Returns title, content (markdown), tags, isFavorite, and timestamps.',
       inputSchema: z.object({
         id: z.number().int().describe('(required) Recipe ID.')
       })
@@ -87,6 +91,7 @@ export function registerRecipeTools(server: McpServer, db: PrismaClient) {
         title: recipe.title,
         content: recipe.content,
         tags: recipe.tags.map(rt => rt.tag.label),
+        isFavorite: recipe.is_favorite,
         updated_at: recipe.updated_at
       })
     }

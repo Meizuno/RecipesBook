@@ -4,6 +4,7 @@ type Tag = { id: number, label: string, color: string }
 const title = ref('')
 const content = ref('')
 const tagIds = ref<number[]>([])
+const isFavorite = ref(false)
 const saving = ref(false)
 
 const { data: tags } = await useFetch<Tag[]>('/api/tags')
@@ -14,7 +15,12 @@ async function save() {
   try {
     const recipe = await $fetch<{ id: number }>('/api/recipes', {
       method: 'POST',
-      body: { title: title.value, content: content.value, tagIds: tagIds.value }
+      body: {
+        title: title.value,
+        content: content.value,
+        tagIds: tagIds.value,
+        is_favorite: isFavorite.value
+      }
     })
     await navigateTo(`/recipes/${recipe.id}`)
   } finally { saving.value = false }
@@ -27,6 +33,7 @@ async function save() {
       v-model:title="title"
       v-model:content="content"
       v-model:tag-ids="tagIds"
+      v-model:is-favorite="isFavorite"
       :tags="tags ?? []"
       :saving="saving"
       submit-label="Save recipe"

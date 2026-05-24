@@ -20,12 +20,16 @@ export default defineEventHandler(async (event) => {
   const tags = (Array.isArray(rawTags) ? rawTags : rawTags ? [rawTags] : [])
     .map(s => String(s).trim()).filter(Boolean)
   const search = query.search ? String(query.search) : ''
+  // `?favorite=1` restricts to recipes flagged as favorites. Any
+  // other value (or absence) leaves the result unfiltered.
+  const favoritesOnly = String(query.favorite ?? '') === '1'
   const limit = Math.min(Number(query.limit) || DEFAULT_LIMIT, 100)
   const offset = Number(query.offset) || 0
 
   const db = getPrisma()
   const where = {
     is_deleted: false,
+    ...(favoritesOnly ? { is_favorite: true } : {}),
     ...(search ? {
       OR: [
         { title:   { contains: search, mode: 'insensitive' as const } },
@@ -42,10 +46,11 @@ export default defineEventHandler(async (event) => {
         id: true,
         title: true,
         content: true,
+        is_favorite: true,
         updated_at: true,
         tags: { select: { tag_id: true } }
       },
-      orderBy: { updated_at: 'desc' },
+      orderBy: [{ is_favorite: 'desc' }, { updated_at: 'desc' }],
       skip: offset,
       take: limit
     }),
@@ -85,6 +90,7 @@ export default defineEventHandler(async (event) => {
         const item = {
           id: r.id,
           title: r.title,
+          is_favorite: r.is_favorite,
           updated_at: r.updated_at,
           tagIds: r.tags.map(t => t.tag_id),
           snippet: makeSnippet(r.content)
