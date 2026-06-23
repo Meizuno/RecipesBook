@@ -11,5 +11,10 @@ export default defineEventHandler((event) => {
   const isLoopback = /^(localhost|127\.|0\.0\.0\.0|::1|\[::1\])(:|$)/.test(host)
   const proto = forwardedProto ?? (isLoopback ? 'http' : 'https')
   const callbackUrl = encodeURIComponent(`${proto}://${host}/api/auth/callback`)
-  return sendRedirect(event, `${config.authServiceUrl}/google?redirect_url=${callbackUrl}`)
+  // The browser runs the OAuth flow on the auth server's PUBLIC origin (it owns
+  // its /google/callback + Google redirect_uri). Server-to-server calls
+  // (validate/refresh/me) keep using the internal authServiceUrl. Falls back to
+  // authServiceUrl when no separate public URL is configured (dev).
+  const authBase = config.authPublicUrl || config.authServiceUrl
+  return sendRedirect(event, `${authBase}/google?redirect_url=${callbackUrl}`)
 })

@@ -33,7 +33,14 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    // Server-to-server base (validate / refresh / me) — internal in prod.
     authServiceUrl: 'https://auth.meizuno.com',
+    // Browser-facing base for the OAuth login flow (public auth origin). Empty
+    // → falls back to authServiceUrl (dev / single-URL setups).
+    authPublicUrl: '',
+    // Parent domain for the shared auth cookies (e.g. `.meizuno.com`) so one
+    // sign-in spans every *.meizuno.com app. Empty → host-only (dev).
+    cookieDomain: '',
     mcpApiKey: ''
   },
 

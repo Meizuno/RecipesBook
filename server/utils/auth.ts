@@ -8,7 +8,23 @@ export type AuthUser = {
   picture?: string | null
 }
 
+// The auth service issues these cookies on COOKIE_DOMAIN (e.g. .meizuno.com),
+// so one sign-in is valid across every *.meizuno.com app. We read the SAME
+// names it sets, and only re-set them (with the same attributes) when we
+// rotate the pair on refresh. access_token is readable (SPAs may Bearer it),
+// refresh_token is httpOnly — mirroring the auth service exactly.
+const ACCESS_COOKIE = 'access_token'
+const REFRESH_COOKIE = 'refresh_token'
+const ACCESS_MAX_AGE = 60 * 15
+const REFRESH_MAX_AGE = 60 * 60 * 24 * 7
+
 const isSecure = () => process.env.NODE_ENV === 'production'
+
+// Parent domain the cookies are scoped to (NUXT_COOKIE_DOMAIN, e.g.
+// `.meizuno.com`). Empty in dev → host-only cookies on localhost.
+function cookieDomain(): string | undefined {
+  return (useRuntimeConfig().cookieDomain as string) || undefined
+}
 
 /** Validate a token string against the auth service */
 async function validateToken(token: string): Promise<string | null> {
@@ -57,7 +73,7 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
   const header = getHeader(event, 'authorization')
   const accessToken = header?.toLowerCase().startsWith('bearer ')
     ? header.slice(7).trim()
-    : (ssrRefreshedToken ?? readCookie(event, 'rb_access') ?? '')
+    : (ssrRefreshedToken ?? readCookie(event, ACCESS_COOKIE) ?? '')
 
   const userId = await validateToken(accessToken)
   if (userId) {
@@ -68,7 +84,7 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
   }
 
   // 2. Try refresh token
-  const refreshToken = readCookie(event, 'rb_refresh')
+  const refreshToken = readCookie(event, REFRESH_COOKIE)
   if (!refreshToken) return null
 
   try {
@@ -103,17 +119,21 @@ export function requireAuthUser(event: H3Event): AuthUser {
   return user
 }
 
+// Re-set the shared cookies after a rotation. Attributes mirror the auth
+// service so whichever side last writes them, the cookie stays identical.
 export function setAuthCookies(event: H3Event, accessToken: string, refreshToken: string) {
   const secure = isSecure()
-  setCookie(event, 'rb_access', accessToken, {
-    httpOnly: true, sameSite: 'lax', secure, path: '/'
+  const domain = cookieDomain()
+  setCookie(event, ACCESS_COOKIE, accessToken, {
+    httpOnly: false, sameSite: 'lax', secure, path: '/', domain, maxAge: ACCESS_MAX_AGE
   })
-  setCookie(event, 'rb_refresh', refreshToken, {
-    httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 60 * 60 * 24 * 7
+  setCookie(event, REFRESH_COOKIE, refreshToken, {
+    httpOnly: true, sameSite: 'lax', secure, path: '/', domain, maxAge: REFRESH_MAX_AGE
   })
 }
 
 export function clearAuthCookies(event: H3Event) {
-  deleteCookie(event, 'rb_access', { path: '/' })
-  deleteCookie(event, 'rb_refresh', { path: '/' })
+  const domain = cookieDomain()
+  deleteCookie(event, ACCESS_COOKIE, { path: '/', domain })
+  deleteCookie(event, REFRESH_COOKIE, { path: '/', domain })
 }
