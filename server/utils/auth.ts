@@ -50,6 +50,19 @@ function readCookie(event: H3Event, name: string): string | null {
   return match?.[1] ?? null
 }
 
+// The auth service rotates the refresh token into its /refresh Set-Cookie
+// response (never the body, by design). Read the rotated value from there so
+// the server-side refresh can re-issue it to the browser.
+function rotatedRefresh(headers: Headers): string {
+  const getter = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie
+  const cookies = typeof getter === 'function' ? getter.call(headers) : []
+  for (const c of cookies) {
+    const m = c.match(new RegExp(`^\\s*${REFRESH_COOKIE}=([^;]*)`))
+    if (m?.[1]) return decodeURIComponent(m[1])
+  }
+  return ''
+}
+
 // Stores refreshed token per SSR render so internal API calls can use it
 let ssrRefreshedToken: string | null = null
 
@@ -89,22 +102,27 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
 
   try {
     const config = useRuntimeConfig()
-    const result = await $fetch<{ access_token: string, refresh_token: string }>(
+    const res = await $fetch.raw<{ access_token: string }>(
       `${config.authServiceUrl}/refresh`,
       { method: 'POST', body: { refresh_token: refreshToken } }
     )
+    const newAccess = res._data?.access_token ?? ''
+    // The rotated refresh token rides only in the auth service's Set-Cookie,
+    // never the response body — read it from there to re-issue it.
+    const newRefresh = rotatedRefresh(res.headers)
+    if (!newAccess || !newRefresh) return null
 
-    setAuthCookies(event, result.access_token, result.refresh_token)
+    setAuthCookies(event, newAccess, newRefresh)
     // Store for other SSR internal fetches in the same render
-    ssrRefreshedToken = result.access_token
+    ssrRefreshedToken = newAccess
     setTimeout(() => { ssrRefreshedToken = null }, 5_000)
 
-    const newUserId = await validateToken(result.access_token)
+    const newUserId = await validateToken(newAccess)
     if (!newUserId) return null
 
     const user: AuthUser = { id: newUserId }
     event.context.user = user
-    event.context.accessToken = result.access_token
+    event.context.accessToken = newAccess
     return user
   }
   catch {
