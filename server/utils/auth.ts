@@ -63,8 +63,21 @@ function rotatedRefresh(headers: Headers): string {
   return ''
 }
 
-// Stores refreshed token per SSR render so internal API calls can use it
-let ssrRefreshedToken: string | null = null
+// After a refresh, rewrite THIS request's cookie header to the fresh pair so
+// the page's inner SSR /api fetches (which forward this header) carry the new
+// token. Request-scoped — only mutates the current event, so concurrent
+// requests can't read each other's tokens. Replaces a former module-global
+// `ssrRefreshedToken`, which under concurrent renders leaked one user's
+// refreshed token into another's request.
+function forwardRefreshedCookies(event: H3Event, accessToken: string, refreshToken: string) {
+  const req = event.node?.req
+  if (!req) return
+  const others = (getHeader(event, 'cookie') ?? '')
+    .split(/;\s*/)
+    .filter(Boolean)
+    .filter(pair => !pair.startsWith(`${ACCESS_COOKIE}=`) && !pair.startsWith(`${REFRESH_COOKIE}=`))
+  req.headers.cookie = [...others, `${ACCESS_COOKIE}=${accessToken}`, `${REFRESH_COOKIE}=${refreshToken}`].join('; ')
+}
 
 /**
  * Authenticate the request. Checks access token first, then tries refresh.
@@ -74,19 +87,15 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
   // Already authenticated (e.g. by a previous middleware run)
   if (event.context.user) return event.context.user as AuthUser
 
-  // 1. Check Bearer header (MCP clients), then SSR-refreshed token,
-  //    then the cookie. `ssrRefreshedToken` must take priority over
-  //    the cookie: when an outer page-level middleware refreshes
-  //    during the same render, it sets new cookies on the response
-  //    but the inner SSR fetch still sees the *original* (stale)
-  //    cookie in its forwarded headers. Preferring the cookie there
-  //    would short-circuit the `??` chain on a value that's already
-  //    expired (and whose refresh-pair has been burned), producing a
-  //    spurious 401 on inner /api/auth/me-style calls.
+  // Access token: a Bearer header (MCP clients) else the shared access cookie.
+  // On SSR the inner /api fetches inherit a forward of this request's cookie
+  // header; the refresh path below rewrites that header in place, so inner
+  // calls read the fresh token straight from the cookie — no cross-request
+  // module state.
   const header = getHeader(event, 'authorization')
   const accessToken = header?.toLowerCase().startsWith('bearer ')
     ? header.slice(7).trim()
-    : (ssrRefreshedToken ?? readCookie(event, ACCESS_COOKIE) ?? '')
+    : (readCookie(event, ACCESS_COOKIE) ?? '')
 
   const userId = await validateToken(accessToken)
   if (userId) {
@@ -113,9 +122,9 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
     if (!newAccess || !newRefresh) return null
 
     setAuthCookies(event, newAccess, newRefresh)
-    // Store for other SSR internal fetches in the same render
-    ssrRefreshedToken = newAccess
-    setTimeout(() => { ssrRefreshedToken = null }, 5_000)
+    // Rewrite this request's cookie header so SSR inner fetches forward the
+    // fresh pair instead of the stale (rotated-away) one the browser sent.
+    forwardRefreshedCookies(event, newAccess, newRefresh)
 
     const newUserId = await validateToken(newAccess)
     if (!newUserId) return null
