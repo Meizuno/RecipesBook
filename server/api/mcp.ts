@@ -1,20 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { getHeader } from 'h3'
 import { registerRecipeTools } from '../utils/mcp/recipes'
 import { registerTagTools } from '../utils/mcp/tags'
 
 export default defineEventHandler(async (event) => {
-  // Auth: API key + user ID header (from ai-chat) or user session (browser)
-  const config = useRuntimeConfig()
-  const apiKey = getHeader(event, 'x-api-key')
-  const headerUserId = getHeader(event, 'x-user-id')
-
-  if (config.mcpApiKey && apiKey === config.mcpApiKey && headerUserId) {
-    // Trusted service call — skip auth
-  } else {
-    await requireAuthUser(event)
-  }
+  // The middleware already resolved the principal from the Bearer token
+  // (ai-chat sends the user's access token) or the session cookie (browser).
+  // Require a real authenticated user — never trust a caller-asserted identity.
+  requireAuthUser(event)
 
   const db = getPrisma()
   const server = new McpServer({ name: 'recipes-book', version: '1.0.0' })

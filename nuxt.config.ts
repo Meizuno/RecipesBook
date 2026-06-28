@@ -40,8 +40,7 @@ export default defineNuxtConfig({
     authPublicUrl: '',
     // Parent domain for the shared auth cookies (e.g. `.meizuno.com`) so one
     // sign-in spans every *.meizuno.com app. Empty → host-only (dev).
-    cookieDomain: '',
-    mcpApiKey: ''
+    cookieDomain: ''
   },
 
   nitro: {
